@@ -1,13 +1,20 @@
 import os
 import shutil
-from utils import FaceInTheWild
+from dataset import FaceInTheWild
+from model import Discriminator, Generator, DCGAN
 import torch
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-import numpy as np
-import torchvision.utils as vutils
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
+# define the device to use
+device = torch.device('cpu')
+if torch.cuda.is_available():
+    device = torch.device('cuda')
 
 ##### PROCEDURE TO GET THE IMAGES #####
+
 NAMES_DIR_PATH = os.path.join(os.curdir, 'dataset/lfw')
 
 
@@ -49,7 +56,7 @@ def visualize_sample_image(n_images):
     :return:
     """
     plt.figure(figsize=(8, 8))
-    for idx, image in enumerate(dataloader):
+    for idx, image in enumerate(train_dataloader):
         if idx + 1 > n_images**2:
             break
         plt.subplot(n_images, n_images, idx + 1)
@@ -66,18 +73,53 @@ people_names = get_people_names()
 # we only want to retrieve the image.
 data = get_images_label(people_names)
 # create the dataset
-dataset = FaceInTheWild(data, 'train')
-# create the dataloader
-kwargs = {'batch_size': 128, 'shuffle': True}
-dataloader = DataLoader(dataset, **kwargs)
+train_data = FaceInTheWild(data, 'train')
+val_data = FaceInTheWild(data, 'val')
 
-# define the device to use
-device = torch.device('cpu')
-if torch.cuda.is_available():
-    device = torch.device('cuda')
+## building the model
+latent_vector = torch.randn((100, 1))
+input_size = latent_vector.shape[0]
+generator = Generator(input_size)
+discriminator = Discriminator()
+dcgan = DCGAN(generator, discriminator, input_size)
 
-# visualize some of the images
-visualize_sample_image(6)
+# hyperparameters
+batch_size = 128
+optim_params = {'lr': 0.0002, 'betas': (0.5, 0.999)}
+n_epochs = 100
+# dataloaders
+train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
+
+real_img = 1
+fake_img = 0
+
+# train loop
+
+def train_loop():
+    for epoch in range(n_epochs):
+        d_loss_history = []
+        g_loss_history = []
+        for idx, batch in enumerate(train_dataloader):
+            # TRAIN PROCEDURE
+            # get batch of real images
+            # each image has a shape of [CxHxW] --> [3x64x64]
+            d_loss, g_loss = dcgan(batch)
+            # store losses
+            d_loss_history.append(d_loss)
+            g_loss_history.append(g_loss)
+
+            if idx % 100 == 0:
+                print('Batch [{}/{}], D_Loss: {}, G_Loss: {}'.format(idx+1,
+                                                                     batch.shape[0],
+                                                                     d_loss_history[-1],
+                                                                     g_loss_history[-1]))
+
+
+train_loop()
+
+
+
 
 
 
