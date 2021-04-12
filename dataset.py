@@ -1,5 +1,4 @@
 import torchvision
-import torch.nn as nn
 from PIL import Image
 import os
 from torch.utils.data import Dataset
@@ -26,9 +25,7 @@ class FaceInTheWild(Dataset):
         image_path = os.path.join(FaceInTheWild.IMAGES_PATH, image_label)
         # by defaults, the Discriminator and Generator accepts an image of shape (3x64x64), hence we rescale.
         tensor_converter = torchvision.transforms.Compose([torchvision.transforms.Resize((64, 64)),
-                                                           torchvision.transforms.ToTensor(),
-                                                           torchvision.transforms.Normalize((0.5, 0.5, 0.5),
-                                                                                            (0.5, 0.5, 0.5))])
+                                                           torchvision.transforms.ToTensor()])
         image = tensor_converter(Image.open(image_path))
         return image
 
@@ -38,4 +35,3 @@ class FaceInTheWild(Dataset):
 
     def __len__(self):
         return len(self.data)
-

@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
-import pickle
+import time
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -75,6 +75,18 @@ def visualize_sample_image(n_images):
         plt.axis('off')
     plt.show()
     plt.close()
+
+def format_time(start, end):
+    """
+    Computes the interval time between a start and an end point.
+    :param start: starting time
+    :param end: ending time
+    :return:
+    """
+    elapsed_time = end - start
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_secs, elapsed_mins
 
 # get the names of the people in the dataset.
 people_names = get_people_names()
@@ -160,7 +172,6 @@ def train_loop():
                       'g_optim': dcgan.generator.optim.state_dict(),
                       'd_loss_history': d_loss_history,
                       'g_loss_history': g_loss_history}
-
         if epoch % 2 == 0:
             # visualize a sample of generated images once every n epoch
             gen_images = dcgan.apply_knowledge()

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 device = torch.device('cpu')
 if torch.cuda.is_available():
-    device = device('cuda')
+    device = torch.device('cuda')
 print(device)
 
 
@@ -45,9 +45,8 @@ class DCGAN(nn.Module):
         return d_loss.item(), g_loss.item(), D_x, D_G_z
 
     def train_discriminator(self, input):
-
-        self.discriminator.optim.zero_grad()
         self.discriminator.train()
+        self.discriminator.optim.zero_grad()
 
         batch_size = input.shape[0]
 
@@ -60,31 +59,29 @@ class DCGAN(nn.Module):
         # create vector of 1s for the real images. Must be of the same shape as pred_real
         real_labels = torch.ones(pred_real.shape, dtype=torch.float).to(device)
         real_img_loss = self.criterion(pred_real, real_labels)
-        # compute gradients
-        real_img_loss.backward()
 
         # get loss for the fake images --> log(1-(D(G(z)))
 
         # generate fake images from batch of latent vectors
-        gen_imgs = self.generator(fake_z_vectors).detach()  # -> G(z)
+        gen_imgs = self.generator(fake_z_vectors)  # -> G(z)
         # forward pass through the discriminator to get predictions
-        pred_gen = self.discriminator(gen_imgs).reshape(-1)  # -> D(G(z))
+        pred_gen = self.discriminator(gen_imgs.detach()).reshape(-1)  # -> D(G(z))
         # create vector of 0s for the generated images. Must be of the same shape as pred_gen
         fake_label = torch.zeros(pred_gen.shape, dtype=torch.float).to(device)
         gen_img_loss = self.criterion(pred_gen, fake_label)  # -> log(1-D(G(z)))
-        # compute gradients
-        gen_img_loss.backward()
 
         # combine the two losses
         d_loss = real_img_loss + gen_img_loss
+        # compute gradients
+        d_loss.backward()
         # update weights
         self.discriminator.optim.step()
 
         return d_loss, gen_imgs, D_x
 
     def train_generator(self, gen_imgs):
-        self.generator.optim.zero_grad()
         self.generator.train()
+        self.generator.optim.zero_grad()
 
         # classify previous Generator's output
         pred_gen = self.discriminator(gen_imgs).reshape(-1)  # -> D(G(z))
@@ -119,9 +116,9 @@ class DCGAN(nn.Module):
             if idx + 1 > n_img_per_axis ** 2:
                 break
             plt.subplot(n_img_per_axis, n_img_per_axis, idx + 1)
-            img = (img*0.5)+0.5
+            img = (img * 0.5) + 0.5
             img = img.permute(1, 2, 0)
-            plt.imshow(img)
+            plt.imshow(img.cpu())
             plt.axis('off')
         plt.show()
         plt.close()
@@ -133,6 +130,7 @@ class Discriminator(nn.Module):
     guidelines expressed in the following paper of Alec Radford, Luke Metz and Soumith Chintala
     https://arxiv.org/pdf/1511.06434.pdf.
     """
+
     def __init__(self):
         super(Discriminator, self).__init__()
         self.model = nn.Sequential(
