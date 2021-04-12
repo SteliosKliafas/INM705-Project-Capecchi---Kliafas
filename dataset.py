@@ -26,7 +26,9 @@ class FaceInTheWild(Dataset):
         image_path = os.path.join(FaceInTheWild.IMAGES_PATH, image_label)
         # by defaults, the Discriminator and Generator accepts an image of shape (3x64x64), hence we rescale.
         tensor_converter = torchvision.transforms.Compose([torchvision.transforms.Resize((64, 64)),
-                                                           torchvision.transforms.ToTensor()])
+                                                           torchvision.transforms.ToTensor(),
+                                                           torchvision.transforms.Normalize((0.5, 0.5, 0.5),
+                                                                                            (0.5, 0.5, 0.5))])
         image = tensor_converter(Image.open(image_path))
         return image
 

@@ -5,6 +5,8 @@ from model import Discriminator, Generator, DCGAN
 import torch
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+import numpy as np
+import pickle
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -12,6 +14,13 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 device = torch.device('cpu')
 if torch.cuda.is_available():
     device = torch.device('cuda')
+
+save_dir = os.path.join(os.curdir, 'saved_models')
+checkpoint_path = os.path.join(save_dir, 'checkpoint.pth')
+trained_model_path = os.path.join(save_dir, 'trained_model.pth')
+
+if not os.path.exists(save_dir):
+    os.mkdir(save_dir)
 
 ##### PROCEDURE TO GET THE IMAGES #####
 
@@ -48,6 +57,7 @@ def get_images_label(people):
     images = os.listdir(destination_path)
     return images
 
+
 def visualize_sample_image(n_images):
     """
     This function visualize n_images, sampled randomly
@@ -79,14 +89,14 @@ val_data = FaceInTheWild(data, 'val')
 ## building the model
 latent_vector = torch.randn((100, 1))
 input_size = latent_vector.shape[0]
-generator = Generator(input_size)
-discriminator = Discriminator()
-dcgan = DCGAN(generator, discriminator, input_size)
+generator = Generator(input_size).to(device)
+discriminator = Discriminator().to(device)
+dcgan = DCGAN(generator, discriminator, input_size).to(device)
 
 # hyperparameters
-batch_size = 128
+batch_size = 64
 optim_params = {'lr': 0.0002, 'betas': (0.5, 0.999)}
-n_epochs = 100
+n_epochs = 10
 # dataloaders
 train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
@@ -94,27 +104,72 @@ val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
 real_img = 1
 fake_img = 0
 
+
 # train loop
+def load_from_checkpoint():
+    epoch_idx = 0
+    d_loss_history = []
+    g_loss_history = []
+    generated_images = []
+    if os.path.exists(checkpoint_path):
+        loaded_checkpoint = torch.load(checkpoint_path, map_location=torch.device(device))
+        print('Checkpoint found. Restore from [{}/{}] epoch.'.format(loaded_checkpoint['epoch'], n_epochs))
+        epoch_idx = loaded_checkpoint['epoch']
+        dcgan.load_state_dict(loaded_checkpoint['dcgan_model'])
+        dcgan.discriminator.optim.load_state_dict(loaded_checkpoint['d_optim'])
+        dcgan.generator.optim.load_state_dict(loaded_checkpoint['g_optim'])
+        d_loss_history = loaded_checkpoint['d_loss_history']
+        g_loss_history = loaded_checkpoint['g_loss_history']
+        generated_images = loaded_checkpoint['sample_imgs']
+        return epoch_idx, d_loss_history, g_loss_history, generated_images
+    else:
+        return epoch_idx, d_loss_history, g_loss_history, generated_images
+
+def save_trained_model(state_dict):
+    print('Saving trained model...')
+    torch.save(state_dict, trained_model_path)
+    print('Model saved correctly.')
+
 
 def train_loop():
-    for epoch in range(n_epochs):
-        d_loss_history = []
-        g_loss_history = []
+    epoch_idx, d_loss_history, g_loss_history, sample_gen_images = load_from_checkpoint()
+    for epoch in range(epoch_idx, n_epochs):
+        d_loss_running = []
+        g_loss_running = []
         for idx, batch in enumerate(train_dataloader):
             # TRAIN PROCEDURE
             # get batch of real images
-            # each image has a shape of [CxHxW] --> [3x64x64]
-            d_loss, g_loss = dcgan(batch)
+            # each image has a shape of [NxCxHxW] --> [64x3x64x64]
+            d_loss, g_loss, D_X, D_G_z = dcgan(batch)
             # store losses
-            d_loss_history.append(d_loss)
-            g_loss_history.append(g_loss)
+            d_loss_running.append(d_loss)
+            g_loss_running.append(g_loss)
 
-            if idx % 100 == 0:
-                print('Batch [{}/{}], D_Loss: {}, G_Loss: {}'.format(idx+1,
-                                                                     batch.shape[0],
-                                                                     d_loss_history[-1],
-                                                                     g_loss_history[-1]))
+            if idx % 25 == 0:
+                print('Batch [{}/{}], D_Loss: {}, G_Loss: {}, D(x): {}, D(G(z)): {}'.format(idx,
+                                                                                               train_dataloader.__len__(),
+                                                                                               d_loss_running[-1],
+                                                                                               d_loss_running[-1],
+                                                                                               D_X,
+                                                                                               D_G_z))
+        d_loss_history.append(np.mean(d_loss_running).item())
+        g_loss_history.append(np.mean(g_loss_running).item())
+        checkpoint = {'epoch': epoch,
+                      'dcgan_model': dcgan.state_dict(),
+                      'd_optim': dcgan.discriminator.optim.state_dict(),
+                      'g_optim': dcgan.generator.optim.state_dict(),
+                      'd_loss_history': d_loss_history,
+                      'g_loss_history': g_loss_history}
 
+        if epoch % 2 == 0:
+            # visualize a sample of generated images once every n epoch
+            gen_images = dcgan.apply_knowledge()
+            sample_gen_images.append(gen_images)
+            dcgan.visualize_sample(gen_images)
+            checkpoint['sample_imgs'] = sample_gen_images
+        torch.save(checkpoint, checkpoint_path)
+    print('Training Complete.')
+    save_trained_model(dcgan.state_dict())
 
 train_loop()
 
