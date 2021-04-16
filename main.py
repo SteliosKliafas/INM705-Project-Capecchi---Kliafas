@@ -117,7 +117,6 @@ real_img = 1
 fake_img = 0
 
 
-# train loop
 def load_from_checkpoint():
     epoch_idx = 0
     d_loss_history = []
@@ -132,10 +131,9 @@ def load_from_checkpoint():
         dcgan.generator.optim.load_state_dict(loaded_checkpoint['g_optim'])
         d_loss_history = loaded_checkpoint['d_loss_history']
         g_loss_history = loaded_checkpoint['g_loss_history']
-        generated_images = loaded_checkpoint['sample_imgs']
-        return epoch_idx, d_loss_history, g_loss_history, generated_images
+        return epoch_idx, d_loss_history, g_loss_history
     else:
-        return epoch_idx, d_loss_history, g_loss_history, generated_images
+        return epoch_idx, d_loss_history, g_loss_history
 
 def save_trained_model(state_dict):
     print('Saving trained model...')
@@ -143,11 +141,14 @@ def save_trained_model(state_dict):
     print('Model saved correctly.')
 
 
+n_epochs = 2000
+
 def train_loop():
-    epoch_idx, d_loss_history, g_loss_history, sample_gen_images = load_from_checkpoint()
+    epoch_idx, d_loss_history, g_loss_history = load_from_checkpoint()
     for epoch in range(epoch_idx, n_epochs):
         d_loss_running = []
         g_loss_running = []
+        start_time = time.time()
         for idx, batch in enumerate(train_dataloader):
             # TRAIN PROCEDURE
             # get batch of real images
@@ -157,13 +158,6 @@ def train_loop():
             d_loss_running.append(d_loss)
             g_loss_running.append(g_loss)
 
-            if idx % 25 == 0:
-                print('Batch [{}/{}], D_Loss: {}, G_Loss: {}, D(x): {}, D(G(z)): {}'.format(idx,
-                                                                                               train_dataloader.__len__(),
-                                                                                               d_loss_running[-1],
-                                                                                               d_loss_running[-1],
-                                                                                               D_X,
-                                                                                               D_G_z))
         d_loss_history.append(np.mean(d_loss_running).item())
         g_loss_history.append(np.mean(g_loss_running).item())
         checkpoint = {'epoch': epoch,
@@ -172,12 +166,19 @@ def train_loop():
                       'g_optim': dcgan.generator.optim.state_dict(),
                       'd_loss_history': d_loss_history,
                       'g_loss_history': g_loss_history}
-        if epoch % 2 == 0:
+        end_time = time.time()
+        elapsed_sec, elapsed_min = format_time(start_time, end_time)
+        print('Epoch [%.d/%.d], D_Loss: %.4f, G_Loss: %.4f, D(x): %.4f, D(G(z)): %.4f' % (epoch,
+                                                                                          n_epochs,
+                                                                                          d_loss_running[-1],
+                                                                                          g_loss_running[-1],
+                                                                                          D_X,
+                                                                                          D_G_z), end='| ')
+        print('eta: {}m {}s'.format(elapsed_min, elapsed_sec))
+        if epoch % 100 == 0:
             # visualize a sample of generated images once every n epoch
             gen_images = dcgan.apply_knowledge()
-            sample_gen_images.append(gen_images)
             dcgan.visualize_sample(gen_images)
-            checkpoint['sample_imgs'] = sample_gen_images
         torch.save(checkpoint, checkpoint_path)
     print('Training Complete.')
     save_trained_model(dcgan.state_dict())
