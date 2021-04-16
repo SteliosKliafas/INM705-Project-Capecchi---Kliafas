@@ -76,6 +76,25 @@ def visualize_sample_image(n_images):
     plt.show()
     plt.close()
 
+
+def split_test_train_images(data, source_path, destination_path, phase):
+    if phase == 'train':
+        start = 0
+        limit = int(len(data)*0.9)
+        if os.listdir(destination_path):
+            return os.listdir(destination_path)
+    elif phase == 'test' and os.listdir(destination_path):
+        start = int(len(data)*0.9)
+        limit = len(data)
+        if os.listdir(destination_path):
+            return os.listdir(destination_path)
+
+    for img in data[start:limit]:
+        img_path = os.path.join(source_path, img)
+        shutil.move(img_path, destination_path)
+
+    return os.listdir(destination_path)
+
 def format_time(start, end):
     """
     Computes the interval time between a start and an end point.
@@ -94,9 +113,20 @@ people_names = get_people_names()
 # since we are implementing a GAN model, we don't care about the people's name
 # we only want to retrieve the image.
 data = get_images_label(people_names)
+# create two folder to separate train images from test images
+images_path = os.path.join(os.curdir, 'images')
+train_path = os.path.join(images_path, 'train')
+test_path = os.path.join(images_path, 'test')
+if not os.path.exists(train_path):
+    os.mkdir(train_path)
+if not os.path.exists(test_path):
+    os.mkdir(test_path)
+
+train_images = split_test_train_images(data, images_path, train_path, phase='train')
+test_images = split_test_train_images(data, images_path, test_path, phase='test')
 # create the dataset
-train_data = FaceInTheWild(data, 'train')
-val_data = FaceInTheWild(data, 'val')
+train_data = FaceInTheWild(train_images)
+test_data = FaceInTheWild(test_images)
 
 ## building the model
 latent_vector = torch.randn((100, 1))
@@ -111,7 +141,7 @@ optim_params = {'lr': 0.0002, 'betas': (0.5, 0.999)}
 n_epochs = 10
 # dataloaders
 train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
+val_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
 
 real_img = 1
 fake_img = 0
@@ -194,6 +224,16 @@ def train_loop():
         torch.save(checkpoint, checkpoint_path)
     print('Training Complete.')
     save_trained_model(dcgan.state_dict())
+
+def evalute():
+    """
+    Compute the FID score. We use the open-source library pytorch-fid
+    :return:
+    """
+    # generate images using the generator
+    # store them in a directory
+    # retrieve the test images
+    # compute fid score
 
 train_loop()
 

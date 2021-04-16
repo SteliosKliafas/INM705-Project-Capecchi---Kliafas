@@ -8,13 +8,9 @@ class FaceInTheWild(Dataset):
 
     IMAGES_PATH = os.path.join(os.curdir, 'images')
 
-    def __init__(self, data, stage):
+    def __init__(self, data):
         super(FaceInTheWild, self).__init__()
-        train_stage_perc = int(len(data) * 0.9)
-        if stage == 'train':
-            self.data = data[:train_stage_perc]
-        elif stage == 'val':
-            self.data = data[train_stage_perc:]
+        self.data = data
 
     def retrieve_image(self, image_label):
         """
