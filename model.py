@@ -16,7 +16,7 @@ class DCGAN(nn.Module):
         self.generator = generator
         self.discriminator = discriminator
         self.input_size = input_size
-        self.criterion = nn.BCELoss()
+        self.criterion = nn.BCEWithLogitsLoss()
         # batch of random noise used to visualize how good the
         self.sample_noise = torch.randn((64, self.input_size, 1, 1), dtype=torch.float).to(device)
 
@@ -135,23 +135,27 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
         self.model = nn.Sequential(
             # we work with batches -> [N x n_channels x 64 x 64]
+            # output dimensions at each layer we apply the formula [out = ((i+2p-k)/s)+1]
+            # Convolution is used to DOWNSAMPLE the image
+
+            # output [N x 64 x 32 x 32]
             nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
-
+            # output [N x 128 x 16 x 16]
             nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
-
+            # output [N x 256 x 8 x 8]
             nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True),
-
+            # output [N x 512 x 4 x 4]
             nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
-
+            # output [N x 1 x 1 x 1]
             nn.Conv2d(512, 1, kernel_size=4, stride=1, padding=0, bias=False),
-            nn.Sigmoid()  # final output shape [N x 1 x 1 x 1]
+            # nn.Sigmoid()
         ).to(device)
 
         self.optim = Adam(self.model.parameters(), lr=0.0002, betas=(0.5, 0.999))
@@ -183,25 +187,26 @@ class Generator(nn.Module):
         # the sequence of [Conv Transpose-BatchNorm-Act Function] used to generate
         # a volume of 3x64x64 (an image) from the latent vector. To compute the correct
         # output dimensions at each layer we apply the formula [out = s(i-1)+k-2p]
+        # Transpose Convolution is used to UPSAMPLE the image
         self.model = nn.Sequential(
             # input [N x noise_channel x 1 x 1
             # output [N x 512 x 4 x 4]
             nn.ConvTranspose2d(self.z_size, 512, kernel_size=4, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(512),
             nn.ReLU(True),
-
+            # output [N x 256 x 8 x 8]
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
-
+            # output [N x 128 x 16 x 16]
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(128),
             nn.ReLU(True),
-
+            # output [N x 64 x 32 x 32]
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(True),
-
+            # output [N x 3 x 64 x 64]
             nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1, bias=False),
             nn.Tanh()
         ).to(device)
