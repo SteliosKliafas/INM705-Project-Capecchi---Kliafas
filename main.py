@@ -45,6 +45,8 @@ def get_images_label(people):
     destination_path = os.path.join(os.curdir, 'images')
     if not os.path.exists(destination_path):
         os.mkdir('images')
+    if len(os.listdir(destination_path)) == 2:
+        return os.listdir(destination_path)
     for person in people:
         path = os.path.join(NAMES_DIR_PATH, person)
         images = os.listdir(path)
@@ -83,7 +85,7 @@ def split_test_train_images(data, source_path, destination_path, phase):
         limit = int(len(data)*0.9)
         if os.listdir(destination_path):
             return os.listdir(destination_path)
-    elif phase == 'test' and os.listdir(destination_path):
+    elif phase == 'test':
         start = int(len(data)*0.9)
         limit = len(data)
         if os.listdir(destination_path):
