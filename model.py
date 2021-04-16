@@ -55,7 +55,7 @@ class DCGAN(nn.Module):
         # get loss for the real images --> log(D(x))
         pred_real = self.discriminator(input).reshape(-1)  # -> D(x)
         # average D(x) over the batch size
-        D_x = pred_real.mean().item()
+        D_x = torch.sigmoid(pred_real.mean()).item()
         # create vector of 1s for the real images. Must be of the same shape as pred_real
         real_labels = torch.ones(pred_real.shape, dtype=torch.float).to(device)
         real_img_loss = self.criterion(pred_real, real_labels)
@@ -86,7 +86,7 @@ class DCGAN(nn.Module):
         # classify previous Generator's output
         pred_gen = self.discriminator(gen_imgs).reshape(-1)  # -> D(G(z))
         # average D(G(z)) over the batch size
-        D_G_z = pred_gen.mean().item()
+        D_G_z = torch.sigmoid(pred_gen.mean()).item()
         # use the real labels to compute the loss
         real_labels = torch.ones(pred_gen.shape, dtype=torch.float).to(device)
         # we use the real labels because we want to maximize the quantity log(D(G(z)))
@@ -193,17 +193,17 @@ class Generator(nn.Module):
             # output [N x 512 x 4 x 4]
             nn.ConvTranspose2d(self.z_size, 512, kernel_size=4, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(512),
+            nn.Dropout(0.5),
             nn.ReLU(True),
             # output [N x 256 x 8 x 8]
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
-            nn.Dropout(True),
             # output [N x 128 x 16 x 16]
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(128),
+            nn.Dropout(0.5),
             nn.ReLU(True),
-            nn.Dropout(True),
             # output [N x 64 x 32 x 32]
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64),
