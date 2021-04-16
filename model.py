@@ -198,10 +198,12 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
+            nn.Dropout(True),
             # output [N x 128 x 16 x 16]
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(128),
             nn.ReLU(True),
+            nn.Dropout(True),
             # output [N x 64 x 32 x 32]
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64),
