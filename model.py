@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 import matplotlib.pyplot as plt
 
 device = torch.device('cpu')
@@ -57,7 +57,7 @@ class DCGAN(nn.Module):
         # average D(x) over the batch size
         D_x = torch.sigmoid(pred_real.mean()).item()
         # create vector of 1s for the real images. Must be of the same shape as pred_real
-        # real_labels = torch.ones(pred_real.shape, dtype=torch.float).to(device)
+        # real_labels = (torch.ones(pred_real.shape, dtype=torch.float)*0.9).to(device)
         real_labels = (torch.randint(low=7, high=13, size=pred_real.shape)*0.1).to(device)
         real_img_loss = self.criterion(pred_real, real_labels)
 
@@ -68,7 +68,7 @@ class DCGAN(nn.Module):
         # forward pass through the discriminator to get predictions
         pred_gen = self.discriminator(gen_imgs.detach()).reshape(-1)  # -> D(G(z))
         # create vector of 0s for the generated images. Must be of the same shape as pred_gen
-        # fake_label = torch.zeros(pred_gen.shape, dtype=torch.float).to(device)
+        # fake_label = (torch.ones(pred_gen.shape, dtype=torch.float)*0.1).to(device)
         fake_label = (torch.randint(low=0, high=4, size=pred_gen.shape, dtype=torch.float)*0.1).to(device)
         gen_img_loss = self.criterion(pred_gen, fake_label)  # -> log(1-D(G(z)))
 
@@ -160,7 +160,7 @@ class Discriminator(nn.Module):
             # nn.Sigmoid()
         ).to(device)
 
-        self.optim = Adam(self.model.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        self.optim = SGD(self.model.parameters(), lr=0.0002)
         self.init_weights()
 
     def forward(self, x):

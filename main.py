@@ -9,6 +9,7 @@ import numpy as np
 import time
 import torchvision
 from pytorch_fid import fid_score
+
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 # define the device to use
@@ -233,6 +234,8 @@ def evalute():
     Compute the FID score. We use the open-source library pytorch-fid
     :return:
     """
+    dcgan.discriminator.eval()
+    dcgan.generator.eval()
     generated_path = os.path.join(images_path, 'generated')
     test_path = os.path.join(images_path, 'test')
     if os.path.exists(generated_path):
@@ -247,10 +250,7 @@ def evalute():
         gen_img = torchvision.transforms.ToPILImage(mode='RGB')(gen_img)
         gen_img.save(generated_path+'/gen_'+str(idx)+'.jpg')
 
-    # retrieve the test images
-    # compute fid score
-
-train_loop()
+# train_loop()
 
 evalute()
 
