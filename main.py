@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-
+import torchvision
+from pytorch_fid import fid_score
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 # define the device to use
@@ -45,7 +46,7 @@ def get_images_label(people):
     destination_path = os.path.join(os.curdir, 'images')
     if not os.path.exists(destination_path):
         os.mkdir('images')
-    if len(os.listdir(destination_path)) == 2:
+    if len(os.listdir(destination_path)) >=2:
         return os.listdir(destination_path)
     for person in people:
         path = os.path.join(NAMES_DIR_PATH, person)
@@ -127,8 +128,8 @@ if not os.path.exists(test_path):
 train_images = split_test_train_images(data, images_path, train_path, phase='train')
 test_images = split_test_train_images(data, images_path, test_path, phase='test')
 # create the dataset
-train_data = FaceInTheWild(train_images)
-test_data = FaceInTheWild(test_images)
+train_data = FaceInTheWild(train_images, 'train')
+test_data = FaceInTheWild(test_images, 'test')
 
 ## building the model
 latent_vector = torch.randn((100, 1))
@@ -143,7 +144,7 @@ optim_params = {'lr': 0.0002, 'betas': (0.5, 0.999)}
 n_epochs = 10
 # dataloaders
 train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-val_dataloader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
+test_dataloader = DataLoader(test_data, shuffle=True)
 
 real_img = 1
 fake_img = 0
@@ -232,11 +233,24 @@ def evalute():
     Compute the FID score. We use the open-source library pytorch-fid
     :return:
     """
-    # generate images using the generator
-    # store them in a directory
+    generated_path = os.path.join(images_path, 'generated')
+    test_path = os.path.join(images_path, 'test')
+    if os.path.exists(generated_path):
+        os.rmdir(generated_path)
+    os.mkdir(generated_path)
+    # feedforward pass all the test images through the generator
+    for idx, _ in enumerate(test_dataloader):
+        z = torch.randn(1, input_size, 1, 1).to(device)
+        gen_img = dcgan.generator(z)
+        gen_img = gen_img.reshape(3, 64, 64)
+        gen_img = (gen_img * 0.5) + 0.5
+        gen_img = torchvision.transforms.ToPILImage(mode='RGB')(gen_img)
+        gen_img.save(generated_path+'/gen_'+str(idx)+'.jpg')
+
     # retrieve the test images
     # compute fid score
 
+evalute()
 train_loop()
 
 

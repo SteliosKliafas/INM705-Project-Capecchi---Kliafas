@@ -6,11 +6,13 @@ from torch.utils.data import Dataset
 
 class FaceInTheWild(Dataset):
 
-    IMAGES_PATH = os.path.join(os.curdir, 'images')
+    IMAGES_PATH_TRAIN = os.path.join(os.curdir, 'images/train')
+    IMAGES_PATH_TEST = os.path.join(os.curdir, 'images/test')
 
-    def __init__(self, data):
+    def __init__(self, data, phase):
         super(FaceInTheWild, self).__init__()
         self.data = data
+        self.phase = phase
 
     def retrieve_image(self, image_label):
         """
@@ -18,7 +20,10 @@ class FaceInTheWild(Dataset):
         :param image_label: the image label used to retrieve the image from the parent directory
         :return image: the tensor image of shape (3x64x64) -> (CxHxW)
         """
-        image_path = os.path.join(FaceInTheWild.IMAGES_PATH, image_label)
+        if self.phase == 'train':
+            image_path = os.path.join(FaceInTheWild.IMAGES_PATH_TRAIN, image_label)
+        elif self.phase == 'test':
+            image_path = os.path.join(FaceInTheWild.IMAGES_PATH_TEST, image_label)
         # by defaults, the Discriminator and Generator accepts an image of shape (3x64x64), hence we rescale.
         tensor_converter = torchvision.transforms.Compose([torchvision.transforms.Resize((64, 64)),
                                                            torchvision.transforms.ToTensor()])
