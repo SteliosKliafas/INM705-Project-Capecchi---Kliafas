@@ -57,7 +57,8 @@ class DCGAN(nn.Module):
         # average D(x) over the batch size
         D_x = torch.sigmoid(pred_real.mean()).item()
         # create vector of 1s for the real images. Must be of the same shape as pred_real
-        real_labels = torch.ones(pred_real.shape, dtype=torch.float).to(device)
+        # real_labels = torch.ones(pred_real.shape, dtype=torch.float).to(device)
+        real_labels = (torch.randint(low=7, high=13, size=pred_real.shape)*0.1).to(device)
         real_img_loss = self.criterion(pred_real, real_labels)
 
         # get loss for the fake images --> log(1-(D(G(z)))
@@ -67,7 +68,8 @@ class DCGAN(nn.Module):
         # forward pass through the discriminator to get predictions
         pred_gen = self.discriminator(gen_imgs.detach()).reshape(-1)  # -> D(G(z))
         # create vector of 0s for the generated images. Must be of the same shape as pred_gen
-        fake_label = torch.zeros(pred_gen.shape, dtype=torch.float).to(device)
+        # fake_label = torch.zeros(pred_gen.shape, dtype=torch.float).to(device)
+        fake_label = (torch.randint(low=0, high=4, size=pred_gen.shape, dtype=torch.float)*0.1).to(device)
         gen_img_loss = self.criterion(pred_gen, fake_label)  # -> log(1-D(G(z)))
 
         # combine the two losses
@@ -193,21 +195,21 @@ class Generator(nn.Module):
             # output [N x 512 x 4 x 4]
             nn.ConvTranspose2d(self.z_size, 512, kernel_size=4, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(512),
-            nn.Dropout(0.5),
-            nn.ReLU(True),
+            nn.Dropout(0.1),
+            nn.LeakyReLU(0.2, inplace=True),
             # output [N x 256 x 8 x 8]
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(256),
-            nn.ReLU(True),
+            nn.LeakyReLU(0.2, inplace=True),
             # output [N x 128 x 16 x 16]
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(128),
-            nn.Dropout(0.5),
-            nn.ReLU(True),
+            nn.Dropout(0.1),
+            nn.LeakyReLU(0.2, inplace=True),
             # output [N x 64 x 32 x 32]
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64),
-            nn.ReLU(True),
+            nn.LeakyReLU(0.2, inplace=True),
             # output [N x 3 x 64 x 64]
             nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1, bias=False),
             nn.Tanh()

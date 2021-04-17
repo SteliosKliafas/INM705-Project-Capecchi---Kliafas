@@ -83,11 +83,11 @@ def visualize_sample_image(n_images):
 def split_test_train_images(data, source_path, destination_path, phase):
     if phase == 'train':
         start = 0
-        limit = int(len(data)*0.9)
+        limit = int(len(data)*0.8)
         if os.listdir(destination_path):
             return os.listdir(destination_path)
     elif phase == 'test':
-        start = int(len(data)*0.9)
+        start = int(len(data)*0.8)
         limit = len(data)
         if os.listdir(destination_path):
             return os.listdir(destination_path)
@@ -250,8 +250,9 @@ def evalute():
     # retrieve the test images
     # compute fid score
 
-evalute()
 train_loop()
+
+evalute()
 
 
 
