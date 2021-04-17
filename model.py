@@ -160,7 +160,7 @@ class Discriminator(nn.Module):
             # nn.Sigmoid()
         ).to(device)
 
-        self.optim = SGD(self.model.parameters(), lr=0.0002)
+        self.optim = Adam(self.model.parameters(), lr=0.0002, betas=(0.5, 0.999))
         self.init_weights()
 
     def forward(self, x):
