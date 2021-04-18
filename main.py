@@ -8,7 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import torchvision
-from pytorch_fid import fid_score
+from pytorch_fid import fid_score as compute_fid
+import subprocess
+import sys
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -145,7 +147,7 @@ optim_params = {'lr': 0.0002, 'betas': (0.5, 0.999)}
 n_epochs = 10
 # dataloaders
 train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-test_dataloader = DataLoader(test_data, shuffle=True)
+test_dataloader = DataLoader(test_data, batch_size=1, shuffle=True)
 
 real_img = 1
 fake_img = 0
@@ -157,6 +159,7 @@ def load_from_checkpoint():
     g_loss_history = []
     d_x_history = []
     d_g_z_history = []
+    fid_score_history = []
     if os.path.exists(checkpoint_path):
         loaded_checkpoint = torch.load(checkpoint_path, map_location=torch.device(device))
         print('Checkpoint found. Restore from [{}/{}] epoch.'.format(loaded_checkpoint['epoch'], n_epochs))
@@ -168,9 +171,10 @@ def load_from_checkpoint():
         g_loss_history = loaded_checkpoint['g_loss_history']
         d_x_history = loaded_checkpoint['d_x_history']
         d_g_z_history = loaded_checkpoint['d_g_z_history']
-        return epoch_idx, d_loss_history, g_loss_history, d_x_history, d_g_z_history
+        fid_score_history = loaded_checkpoint['fid_score_history']
+        return epoch_idx, d_loss_history, g_loss_history, d_x_history, d_g_z_history, fid_score_history
     else:
-        return epoch_idx, d_loss_history, g_loss_history, d_x_history, d_g_z_history
+        return epoch_idx, d_loss_history, g_loss_history, d_x_history, d_g_z_history, fid_score_history
 
 def save_trained_model(state_dict):
     print('Saving trained model...')
@@ -181,7 +185,7 @@ def save_trained_model(state_dict):
 n_epochs = 2000
 
 def train_loop():
-    epoch_idx, d_loss_history, g_loss_history, d_x_history, d_g_z_history = load_from_checkpoint()
+    epoch_idx, d_loss_history, g_loss_history, d_x_history, d_g_z_history, fid_score_history = load_from_checkpoint()
     for epoch in range(epoch_idx, n_epochs):
         d_loss_running = []
         g_loss_running = []
@@ -198,11 +202,18 @@ def train_loop():
             g_loss_running.append(g_loss)
             d_x_running.append(D_X)
             d_g_z_running.append(D_G_z)
+            break
 
         d_loss_history.append(np.mean(d_loss_running).item())
         g_loss_history.append(np.mean(g_loss_running).item())
         d_x_history.append(np.mean(d_x_running).item())
         d_g_z_history.append(np.mean(d_g_z_running).item())
+        if epoch % 100 == 0:
+            # visualize a sample of generated images once every n epoch
+            fid_score = evaluate()
+            fid_score_history.append(fid_score)
+            gen_images = dcgan.apply_knowledge()
+            dcgan.visualize_sample(gen_images)
         checkpoint = {'epoch': epoch,
                       'dcgan_model': dcgan.state_dict(),
                       'd_optim': dcgan.discriminator.optim.state_dict(),
@@ -210,7 +221,8 @@ def train_loop():
                       'd_loss_history': d_loss_history,
                       'g_loss_history': g_loss_history,
                       'd_x_history': d_x_history,
-                      'd_g_z_history': d_g_z_history}
+                      'd_g_z_history': d_g_z_history,
+                      'fid_score_history': fid_score_history}
         end_time = time.time()
         elapsed_sec, elapsed_min = format_time(start_time, end_time)
         print('Epoch [%.d/%.d], D_Loss: %.4f, G_Loss: %.4f, D(x): %.4f, D(G(z)): %.4f' % (epoch,
@@ -221,15 +233,11 @@ def train_loop():
                                                                                           d_g_z_history[-1]),
               end='| ')
         print('eta: {}m {}s'.format(elapsed_min, elapsed_sec))
-        if epoch % 100 == 0:
-            # visualize a sample of generated images once every n epoch
-            gen_images = dcgan.apply_knowledge()
-            dcgan.visualize_sample(gen_images)
         torch.save(checkpoint, checkpoint_path)
     print('Training Complete.')
     save_trained_model(dcgan.state_dict())
 
-def evalute():
+def evaluate():
     """
     Compute the FID score. We use the open-source library pytorch-fid
     :return:
@@ -239,21 +247,20 @@ def evalute():
     generated_path = os.path.join(images_path, 'generated')
     test_path = os.path.join(images_path, 'test')
     if os.path.exists(generated_path):
-        os.rmdir(generated_path)
+        shutil.rmtree(generated_path)
     os.mkdir(generated_path)
     # feedforward pass all the test images through the generator
     for idx, _ in enumerate(test_dataloader):
-        z = torch.randn(1, input_size, 1, 1).to(device)
-        gen_img = dcgan.generator(z)
+        noise = torch.randn((1, input_size, 1, 1), dtype=torch.float).to(device)
+        gen_img = dcgan.generator(noise)
         gen_img = gen_img.reshape(3, 64, 64)
         gen_img = (gen_img * 0.5) + 0.5
         gen_img = torchvision.transforms.ToPILImage(mode='RGB')(gen_img)
         gen_img.save(generated_path+'/gen_'+str(idx)+'.jpg')
+    fid_score = compute_fid.calculate_fid_given_paths([generated_path, test_path], 50, device, 768)
+    return fid_score
 
-# train_loop()
-
-evalute()
-
+train_loop()
 
 
 
