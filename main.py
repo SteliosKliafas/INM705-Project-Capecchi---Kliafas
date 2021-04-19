@@ -257,7 +257,7 @@ def evaluate():
         gen_img = (gen_img * 0.5) + 0.5
         gen_img = torchvision.transforms.ToPILImage(mode='RGB')(gen_img)
         gen_img.save(generated_path+'/gen_'+str(idx)+'.jpg')
-    fid_score = compute_fid.calculate_fid_given_paths([generated_path, test_path], 50, device, 768)
+    fid_score = compute_fid.calculate_fid_given_paths([generated_path, test_path], 50, device, 2048)
     return fid_score
 
 train_loop()
