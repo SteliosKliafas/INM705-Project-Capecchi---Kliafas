@@ -196,20 +196,20 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(self.z_size, 512, kernel_size=4, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(512),
             nn.Dropout(0.1),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             # output [N x 256 x 8 x 8]
             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             # output [N x 128 x 16 x 16]
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(128),
             nn.Dropout(0.1),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             # output [N x 64 x 32 x 32]
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.ReLU(inplace=True),
             # output [N x 3 x 64 x 64]
             nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1, bias=False),
             nn.Tanh()
